@@ -1,0 +1,16 @@
+POST    /addUser/:userId                                       controllers.StockExchangeController.postUser(userId: String)
+DELETE  /deleteUser/:userId                                    controllers.StockExchangeController.deleteUser(userId: String)
+
+POST    /users/:userId/addFavoriteStock/:stock                 controllers.StockExchangeController.postFavorite(userId: String, stock: String)
+DELETE  /users/:userId/deleteFavoriteStock/:stock              controllers.StockExchangeController.deleteFavorite(userId: String, stock: String)
+GET     /users/:userId                                         controllers.StockExchangeController.findById(userId: String)
+
+DELETE  /users/:userId/deleteRecords/:stock                    controllers.StockExchangeController.deleteRecords(userId: String, stock: String)
+GET     /users/:userId/stockRecords/:stock                     controllers.StockExchangeController.getRecords(userId: String, stock: String)
+
+GET     /users/:userId/getLowestPrice/:stock                   controllers.StockExchangeController.getLowestPrice(userId: String, stock: String)
+GET     /users/:userId/getLowestPrice/:stock/in/:minutes       controllers.StockExchangeController.getLowestPriceIn(userId: String, stock: String, minutes: Int)
+GET     /users/:userId/getHighestPrice/:stock                  controllers.StockExchangeController.getHighestPrice(userId: String, stock: String)
+GET     /users/:userId/getHighestPrice/:stock/in/:minutes      controllers.StockExchangeController.getHighestPriceIn(userId: String, stock: String, minutes: Int)
+
+GET     /users/:userId/dayChange/:stock                        controllers.StockExchangeController.getDayChange(userId: String, stock: String)
