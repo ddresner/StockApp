@@ -28,7 +28,7 @@ class StockPriceRequestActor @Inject() (service: StockExchangeService) extends A
       val weekDay = DayOfWeek.of(dateTime.getDayOfWeek)
       val hour = dateTime.getHourOfDay
       if (weekDay != DayOfWeek.SATURDAY && weekDay != DayOfWeek.SUNDAY
-        && (hour >= 13 || (hour >= 12 && dateTime.getMinuteOfHour >= 30))
+        && (hour >= 14 || (hour >= 13 && dateTime.getMinuteOfHour >= 30))
         && hour < 20) {
         requestStocks()
       }

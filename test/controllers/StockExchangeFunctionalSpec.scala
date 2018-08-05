@@ -7,10 +7,13 @@ import play.api.test.Helpers
 
 import scala.concurrent.duration._
 import akka.util.Timeout
-import models.{StockFavorite, StockUser, ValidStockPriceRecord}
-import models.StockUser.stockUserReads
-import models.dao.{StockFavoritesDao, StockUsersDao}
+import java.util.Calendar
 
+import models.{DayChange, StockFavorite, StockUser, ValidStockPriceRecord}
+import models.StockUser.stockUserReads
+import models.dao.{StockFavoritesDao, StockPricesDao, StockUsersDao}
+import org.joda.time.DateTime
+import util.StockExchangeService
 
 import scala.util.Random
 
@@ -23,6 +26,8 @@ class StockExchangeFunctionalSpec extends PlaySpec with OneServerPerTest {
   lazy val BaseUrl = s"http://localhost:$port"
   lazy val usersDao: StockUsersDao = app.injector.instanceOf[StockUsersDao]
   lazy val favoritesDao: StockFavoritesDao = app.injector.instanceOf[StockFavoritesDao]
+  lazy val pricesDao: StockPricesDao = app.injector.instanceOf[StockPricesDao]
+  lazy val services = app.injector.instanceOf[StockExchangeService]
 
   "test server logic" must {
     "test add/delete user" in {
@@ -124,11 +129,72 @@ class StockExchangeFunctionalSpec extends PlaySpec with OneServerPerTest {
       getPriceResponse.isEmpty mustBe true
     }
 
-     "day change" in {
-       val wsClient = app.injector.instanceOf[WSClient]
-       val dayChangeResponse = Helpers.await(wsClient.url(BaseUrl + "/users/ashley/dayChange/msft").get())
+    "day change" in {
+      val wsClient = app.injector.instanceOf[WSClient]
+      val username = createRandomString
+      val addResponse = Helpers.await(wsClient.url(BaseUrl + "/addUser/" + username).post(EmptyBody))
+      addResponse.status mustBe Http.Status.OK
+      val StockUser(id, _) = addResponse.json.as[StockUser]
+      val cal = Calendar.getInstance
 
-     }
+      val open = new DateTime(cal.getTime).withTime(13, 30, 0, 0)
+      val other_1 = new DateTime(cal.getTime).withTime(14, 0, 0, 0)
+
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.45, open))
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.6, other_1))
+
+      cal.add(Calendar.DATE, -1)
+
+      val close = new DateTime(cal.getTime).withTime(20, 0, 0, 0)
+      val other_2 = new DateTime(cal.getTime).withTime(19, 59, 55, 0)
+
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.25, close))
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.3, other_2))
+
+      val dayChangeResponse = Helpers.await(wsClient.url(BaseUrl + "/users/" + username + "/dayChange/aapl").get())
+      dayChangeResponse.status mustBe Http.Status.OK
+      val dayChange = dayChangeResponse.json.as[DayChange]
+
+      dayChange.change mustBe .35
+
+      dayChange.percentage mustBe 28
+
+      val delUserResponse = Helpers.await(wsClient.url(BaseUrl + "/deleteUser/" + username).delete())
+      delUserResponse.status mustBe Http.Status.OK
+    }
+    "min/max tests" in {
+      val wsClient = app.injector.instanceOf[WSClient]
+      val username = createRandomString
+      val addResponse = Helpers.await(wsClient.url(BaseUrl + "/addUser/" + username).post(EmptyBody))
+      addResponse.status mustBe Http.Status.OK
+      val StockUser(id, _) = addResponse.json.as[StockUser]
+      val cal = Calendar.getInstance
+
+      val open = new DateTime(cal.getTime).withTime(13, 30, 0, 0)
+      val other_1 = new DateTime(cal.getTime).withTime(14, 0, 0, 0)
+
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.45, open))
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.6, other_1))
+
+      cal.add(Calendar.DATE, -1)
+
+      val close = new DateTime(cal.getTime).withTime(20, 0, 0, 0)
+      val other_2 = new DateTime(cal.getTime).withTime(19, 59, 55, 0)
+
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.25, close))
+      pricesDao.addPrice(ValidStockPriceRecord(id, "aapl", 1.3, other_2))
+
+      val minResponse = Helpers.await(wsClient.url(BaseUrl + "/users/" + username + "/getLowestPrice/aapl").get())
+      minResponse.status mustBe Http.Status.OK
+      minResponse.json.as[ValidStockPriceRecord].price mustBe 1.25
+
+      val maxResponse = Helpers.await(wsClient.url(BaseUrl + "/users/" + username + "/getHighestPrice/aapl").get())
+      maxResponse.status mustBe Http.Status.OK
+      maxResponse.json.as[ValidStockPriceRecord].price mustBe 1.6
+
+      val delUserResponse = Helpers.await(wsClient.url(BaseUrl + "/deleteUser/" + username).delete())
+      delUserResponse.status mustBe Http.Status.OK
+    }
   }
 
   private def createRandomString: String = {

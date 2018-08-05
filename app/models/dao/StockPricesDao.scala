@@ -151,9 +151,10 @@ db: Database
   def getClosePrice(username: String, stock: String): Either[String, ValidStockPriceRecord] = {
     withDbConnection({
       implicit c => {
-          val timeLimit:DateTime = new DateTime().withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
-          Right(indexClose.on("username" -> username, "stock" -> stock, "cap" -> timeLimit)
-            .as(ValidStockPriceRecord.parser.*).head)
+          val timeLimit:DateTime = new DateTime().withZone(DateTimeZone.UTC).withTime(0, 0, 0, 1)
+        val test = indexClose.on("username" -> username, "stock" -> stock, "cap" -> timeLimit)
+          .as(ValidStockPriceRecord.parser.*)
+          Right(test.head)
       }
     }, Left("error indexing close price record"))
   }
@@ -162,8 +163,9 @@ db: Database
     withDbConnection({
       implicit c => {
         val timeLimit:DateTime = new DateTime().withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
-        Right(indexOpen.on("username" -> username, "stock" -> stock, "cap" -> timeLimit)
-          .as(ValidStockPriceRecord.parser.*).head)
+        val test = indexOpen.on("username" -> username, "stock" -> stock, "cap" -> timeLimit)
+          .as(ValidStockPriceRecord.parser.*)
+        Right(test.head)
       }
     }, Left("error indexing open price record"))
   }
